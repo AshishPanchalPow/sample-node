@@ -27,7 +27,7 @@ app.post('/events/rec',function (request, response) {
 app.get('/', function (req, res){
     res.status(200).send({msg: "Hola"});
 })
-var server = app.listen(process.env.PORT || '8000', function () {
+var server = app.listen(8000, function () {
  console.log('App listening on port %s', server.address().port);
  console.log('Press Ctrl+C to quit.');
 });
