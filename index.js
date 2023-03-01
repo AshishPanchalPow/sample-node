@@ -16,9 +16,10 @@ app.post('/events/rec',function (request, response) {
      response.send(webhook_res);
    }
     if(request.body[0].data.api=='PutBlob'){
-       //console.log('>> Blob uploaded - %s', request.body[0].data.url);
-       readUserContent();
-       
+       const blobUrl = request.body[0].data.url;
+       const [blobName, containerName] = blobUrl.split("/").slice(-2);
+       console.log('>> Blob uploaded - %s', blobUrl);
+       readUserContent(containerName, blobName);       
      }
      if(request.body[0].data.api=='DeleteBlob'){
        console.log('>> Blob deleted - %s', request.body[0].data.url);
@@ -28,21 +29,22 @@ app.post('/events/rec',function (request, response) {
    }
 });
 
+//Local methodd, not to be called dduring prod
 app.post('/run/local/:fileName', function(req, res){
   const fileNameToRead = req.params.fileName +".txt";
   console.log(fileNameToRead);
-  readUserContent();
+  readUserContent("usercontent", "samplefile.txt");
   res.status(200).send({msg: "Hey "});
 });
 
- async function readUserContent(){
+ async function readUserContent(containerName, blobName){
   const AZURE_STORAGE_CONNECTION_STRING = process.env.AZURE_STORAGE_CONNECTION_STRING;
   
   const blobServiceClient = BlobServiceClient.fromConnectionString(
     AZURE_STORAGE_CONNECTION_STRING
   );
-  const containerClient = blobServiceClient.getContainerClient("usercontent");
-  const blockBlobClient = containerClient.getBlockBlobClient("samplefile.txt");
+  const containerClient = blobServiceClient.getContainerClient(containerName);
+  const blockBlobClient = containerClient.getBlockBlobClient(blobName);
   
   const downloadResponse =  await blockBlobClient.download(0);
   //console.log(downloadResponse.readableStreamBody);
