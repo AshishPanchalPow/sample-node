@@ -17,7 +17,7 @@ app.post('/events/rec',function (request, response) {
    }
     if(request.body[0].data.api=='PutBlob'){
        const blobUrl = request.body[0].data.url;
-       const [blobName, containerName] = blobUrl.split("/").slice(-2);
+       const [containerName, blobName] = blobUrl.split("/").slice(-2);
        console.log('>> Blob uploaded - %s', blobUrl);
        readUserContent(containerName, blobName);       
      }
