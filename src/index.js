@@ -7,8 +7,7 @@ const port = process.env.PORT || 3000;
 const { BlobServiceClient, StorageSharedKeyCredential } = require("@azure/storage-blob");
 
 app.use(bodyParser.json());
-app.post('/events/rec',function (request, response) {
- console.log(request.body);
+app.post('/listener/events/rec',function (request, response) {
  if('data' in request.body[0]){
    if('validationCode' in request.body[0].data) {
      webhook_res = {'validationResponse': request.body[0].data.validationCode}
@@ -19,7 +18,7 @@ app.post('/events/rec',function (request, response) {
        const blobUrl = request.body[0].data.url;
        const [containerName, blobName] = blobUrl.split("/").slice(-2);
        console.log('>> Blob uploaded - %s', blobUrl);
-       readUserContent(containerName, blobName);       
+       readUserContent(containerName, blobName);
      }
      if(request.body[0].data.api=='DeleteBlob'){
        console.log('>> Blob deleted - %s', request.body[0].data.url);
@@ -29,11 +28,29 @@ app.post('/events/rec',function (request, response) {
    }
 });
 
+function launchConductorWorkflow(languages, sentences){
+  const CONDUCTOR_API_URL = process.env.CONDUCTOR_API_URL;
+  const WORKFLOW_NAME = process.env.WORKFLOW_NAME
+  fetch(`${CONDUCTOR_API_URL}/api/workflow/${WORKFLOW_NAME}?priority=0`, {
+  method: 'POST',
+  body: JSON.stringify({
+    "languages": languages,
+    "sentences": sentences
+  }),
+  headers: {
+    'Content-type': 'application/json',
+  },
+})
+  // Parse JSON data
+  .then((response) => response.text()) 
+  // Showing response
+  .then((json) => console.log("A conductor workflow was launched with id: "+json))
+  .catch(err => console.log(err)) 
+}
+
 //Local methodd, not to be called dduring prod
-app.post('/run/local/:fileName', function(req, res){
-  const fileNameToRead = req.params.fileName +".txt";
-  console.log(fileNameToRead);
-  readUserContent("usercontent", "samplefile.txt");
+app.post('/run/local', function(req, res){
+  readUserContent("orion", "orionApril.json");
   res.status(200).send({msg: "Hey "});
 });
 
@@ -48,10 +65,13 @@ app.post('/run/local/:fileName', function(req, res){
   
   const downloadResponse =  await blockBlobClient.download(0);
   //console.log(downloadResponse.readableStreamBody);
-  const downloaded = (await streamToBuffer(downloadResponse.readableStreamBody)).toString();
-  const [languages, ...sentences] = downloaded.split('\n');
-  console.log(languages.split('|'));
+  const downloaded = (await streamToBuffer(downloadResponse.readableStreamBody));
+  // const fileContent  = downloaded.split('\n');
+  const jsonData = JSON.parse(downloaded);
+  const {languages, sentences} = jsonData;
+  console.log(languages);
   console.log(sentences);
+  launchConductorWorkflow(languages,sentences);
   
 }
 async function streamToBuffer(readableStream) {
@@ -66,19 +86,8 @@ async function streamToBuffer(readableStream) {
     readableStream.on("error", reject);
   });
 }
-// Convert stream to text
-async function streamToText(readable) {
-  readable.setEncoding('utf8');
-  let data = '';
-  for await (const chunk of readable) {
-    data += chunk;
-  }
-  return data;
-}
 
-
-
-app.get('/', function (req, res){
+app.get('/listener/hi', function (req, res){
     res.status(200).send({msg: "Hola"});
 });
 
